@@ -1,0 +1,28 @@
+name: Build .NET Framework Windows Forms App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Restore NuGet packages
+        run: nuget restore messagebox.sln
+
+      - name: Build with MSBuild
+        run: msbuild messagebox.sln /p:Configuration=Release
+
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: messagebox-exe
+          path: |
+            **/bin/Release/*.exe

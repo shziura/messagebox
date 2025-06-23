@@ -12,7 +12,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1.1
+        uses: microsoft/setup-msbuild@v2
 
       - name: Restore NuGet packages
         run: nuget restore messagebox.sln
@@ -21,7 +21,7 @@ jobs:
         run: msbuild messagebox.sln /p:Configuration=Release
 
       - name: Upload EXE artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: messagebox-exe
           path: |

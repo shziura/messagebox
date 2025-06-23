@@ -1,0 +1,59 @@
+name: .NET Desktop CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: messagebox.sln
+      Test_Project_Path: messagebox.Tests\messagebox.Tests.csproj
+      Wap_Project_Directory: messagebox.Package
+      Wap_Project_Path: messagebox.Package\messagebox.Package.wapproj
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Execute unit tests
+      run: dotnet test ${{ env.Test_Project_Path }}
+
+    - name: Restore application
+      run: msbuild ${{ env.Solution_Name }} /t:Restore /p:Configuration=${{ matrix.configuration }}
+
+    - name: Decode signing certificate
+      run: |
+        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
+        $certificatePath = Join-Path -Path ${{ env.Wap_Project_Directory }} -ChildPath GitHubActionsWorkflow.pfx
+        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
+
+    - name: Create app package
+      run: msbuild ${{ env.Wap_Project_Path }} /p:Configuration=${{ matrix.configuration }} /p:UapAppxPackageBuildMode=StoreUpload /p:AppxBundle=Always /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
+
+    - name: Remove signing certificate
+      run: Remove-Item -path ${{ env.Wap_Project_Directory }}\GitHubActionsWorkflow.pfx
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MSIX Package
+        path: ${{ env.Wap_Project_Directory }}\AppPackages
